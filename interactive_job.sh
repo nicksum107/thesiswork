@@ -1,0 +1,12 @@
+srun \
+  --account=pvl \
+  --reservation=pvl-interactive \
+  --job-name=debug \
+  --mail-user=nsum@princeton.edu \
+  --mail-type=ALL \
+  --ntasks=1 \
+  --cpus-per-task=2 \
+  --mem=30720 \
+  --gres=gpu:1 \
+  --time=00-03:00:00 \
+  --pty bash
