@@ -77,8 +77,8 @@ pth_path = './checkpoints/bagnet17_192.pth'
 net = nets.bagnet.bagnet17(pretrained=True,clip_range=clip_range,aggregation='mean')
 #net = nets.resnet.resnet50(pretrained=True)
 
-#for param in net.parameters():
-#    param.requires_grad = False
+for param in net.parameters():
+   param.requires_grad = False
 
 # Parameters of newly constructed modules have requires_grad=True by default
 num_ftrs = net.fc.in_features
