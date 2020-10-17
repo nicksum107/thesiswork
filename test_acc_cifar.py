@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--model_dir",default='checkpoints',type=str,help="path to checkpoints")
 parser.add_argument('--data_dir', default='./data/cifar', type=str,help="path to data")
-parser.add_argument("--model",default='bagnet17',type=str,help="model name")
+parser.add_argument("--model",default='bagnet17_192',type=str,help="model name")
 parser.add_argument("--clip",default=-1,type=int,help="clipping value; do clipping when this argument is set to positive")
 parser.add_argument("--aggr",default='mean',type=str,help="aggregation methods. one of mean, median, cbn")
 
@@ -40,6 +40,7 @@ val_loader = torch.utils.data.DataLoader(testset, batch_size=16, shuffle=False)
 
 #build and initialize model
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# device = 'cpu'
 
 if args.clip > 0:
 	clip_range = [0,args.clip]
@@ -62,6 +63,7 @@ model = torch.nn.DataParallel(model)
 cudnn.benchmark = True
 print('restoring model from checkpoint...')
 checkpoint = torch.load(os.path.join(MODEL_DIR,args.model+'.pth'))
+# print(checkpoint[0])
 model.load_state_dict(checkpoint['net'])
 model = model.to(device)
 model.eval()
