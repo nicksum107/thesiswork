@@ -17,6 +17,8 @@ import PIL
 from PatchAttacker import PatchAttacker
 import os 
 
+import matplotlib.pyplot as plt
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--dump_dir",default='patch_adv',type=str,help="directory to save attack results")
@@ -85,10 +87,14 @@ error_list=[]
 accuracy_list=[]
 patch_loc_list=[]
 
+print("here")
 for data,labels in tqdm(val_loader):
 	
 	data,labels=data.to(device),labels.to(device)
 	data_adv,patch_loc = attacker.perturb(data, labels)
+
+	print(data.shape, data_adv.shape)
+	break 
 
 	output_adv = model(data_adv)
 	error_adv=torch.sum(torch.argmax(output_adv, dim=1) != labels).cpu().detach().numpy()/ data.size(0)

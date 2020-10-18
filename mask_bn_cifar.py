@@ -18,6 +18,8 @@ from scipy.special import softmax
 from math import ceil
 import PIL
 
+import matplotlib.pyplot as plt
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--model_dir",default='checkpoints',type=str,help="path to checkpoints")
@@ -87,12 +89,22 @@ cudnn.benchmark = True
 accuracy_list=[]
 result_list=[]
 clean_corr=0
+print('here')
 
 for data,labels in tqdm(val_loader):
 	
 	data=data.to(device)
 	labels = labels.numpy()
 	output_clean = model(data).detach().cpu().numpy() # logits
+	print(output_clean.shape, labels.shape, output_clean.dtype)
+	for i in range(len(output_clean)):
+		print(labels[i])
+		for j in range(10):
+
+			plt.imshow(output_clean[i,:,:,j])
+			plt.show()
+			
+		break
 	#output_clean = softmax(output_clean,axis=-1) # confidence
 	#output_clean = (output_clean > 0.2).astype(float) # predictions with confidence threshold
 	
@@ -111,6 +123,7 @@ for data,labels in tqdm(val_loader):
 			clean_corr += clean_pred == labels[i]	
 	acc_clean = np.mean(np.argmax(np.mean(output_clean,axis=(1,2)),axis=1) == labels)
 	accuracy_list.append(acc_clean)
+	break
 
 
 cases,cnt=np.unique(result_list,return_counts=True)
