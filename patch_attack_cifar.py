@@ -94,6 +94,14 @@ for data,labels in tqdm(val_loader):
 	data_adv,patch_loc = attacker.perturb(data, labels)
 
 	print(data.shape, data_adv.shape)
+	disp = data[0].transpose((1,2,0))
+	plt.imshow(disp)
+	plt.show()
+	disp = data_adv[0].transpose((1,2,0))
+	plt.imshow(disp)
+	plt.show()
+		
+
 	break 
 
 	output_adv = model(data_adv)
