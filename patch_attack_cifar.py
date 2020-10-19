@@ -93,13 +93,9 @@ for data,labels in tqdm(val_loader):
 	data,labels=data.to(device),labels.to(device)
 	data_adv,patch_loc = attacker.perturb(data, labels)
 
-	print(data.shape, data_adv.shape, data.detach().cpu().numpy().dtype)
-	disp = np.transpose(data.detach().cpu().numpy()[0], axes=(1,2,0))
-	plt.imshow(disp)
-	plt.show()
-	disp = np.transpose(data_adv.detach().cpu().numpy()[0], axes=(1,2,0))
-	plt.imshow(disp)
-	plt.show()
+	print(data.shape, data_adv.shape, data.detach().cpu().numpy())
+	np.save("temp_data", data)
+	np.save("temp_data_adv", data_adv)
 		
 
 	break 
