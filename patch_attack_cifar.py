@@ -94,8 +94,8 @@ for data,labels in tqdm(val_loader):
 	data_adv,patch_loc = attacker.perturb(data, labels)
 
 	print(data.shape, data_adv.shape, data.detach().cpu().numpy())
-	np.save("temp_data", data)
-	np.save("temp_data_adv", data_adv)
+	np.save("temp_data", data.detach().cpu().numpy())
+	np.save("temp_data_adv", data_adv.detach().cpu().numpy())
 		
 
 	break 
