@@ -13,4 +13,6 @@ module purge
 module load anaconda3
 conda activate thesis
 
-srun python train_cifar.py -r
+#srun python train_cifar.py 
+srun python patch_attack_cifar.py --data_dir=./data/cifar
+
