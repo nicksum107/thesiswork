@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dump_dir",default='patch_adv',type=str,help="directory to save attack results")
 parser.add_argument("--model_dir",default='checkpoints',type=str,help="path to checkpoints")
 parser.add_argument("--model",default='bagnet17_192',type=str,help="model name")
-parser.add_argument("--data_dir",default='/data/cifar',type=str,help="path to data")
+parser.add_argument("--data_dir",default='./data/cifar',type=str,help="path to data")
 parser.add_argument("--patch_size",default=30,type=int,help="size of the adversarial patch")
 parser.add_argument("--clip",default=-1,type=int,help="clipping value; do clipping when this argument is set to positive")
 parser.add_argument("--aggr",default='mean',type=str,help="aggregation methods. one of mean, median, cbn")
@@ -66,7 +66,7 @@ elif 'bagnet9' in args.model:
     model = nets.bagnet.bagnet9(clip_range=clip_range,aggregation=args.aggr)
 elif 'resnet50' in args.model:
     model = nets.resnet.resnet50(clip_range=clip_range,aggregation=args.aggr)
-   
+
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, 10)
 model = model.to(device)
@@ -78,6 +78,30 @@ checkpoint = torch.load(os.path.join(MODEL_DIR,args.model+'.pth'))
 model.load_state_dict(checkpoint['net'])
 model = model.to(device)
 model.eval()
+
+
+# load in a logits model
+if 'bagnet17' in args.model:
+    logits_model = nets.bagnet.bagnet17(clip_range=clip_range,aggregation='none')
+elif 'bagnet33' in args.model:
+    logits_model = nets.bagnet.bagnet33(clip_range=clip_range,aggregation='none')
+elif 'bagnet9' in args.model:
+    logits_model = nets.bagnet.bagnet9(clip_range=clip_range,aggregation='none')
+elif 'resnet50' in args.model:
+    logits_model = nets.resnet.resnet50(clip_range=clip_range,aggregation='none')
+   
+num_ftrs = logits_model.fc.in_features
+logits_model.fc = nn.Linear(num_ftrs, 10)
+logits_model = logits_model.to(device)
+if device == 'cuda':
+	logits_model = torch.nn.DataParallel(logits_model)
+	cudnn.benchmark = True
+print('restoring logits_model from checkpoint...')
+checkpoint = torch.load(os.path.join(MODEL_DIR,args.model+'.pth'))
+logits_model.load_state_dict(checkpoint['net'])
+logits_model = logits_model.to(device)
+logits_model.eval()
+
 
 
 attacker = PatchAttacker(model, [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010],patch_size=args.patch_size,step_size=0.05,steps=500)
@@ -93,10 +117,14 @@ for data,labels in tqdm(val_loader):
 	data,labels=data.to(device),labels.to(device)
 	data_adv,patch_loc = attacker.perturb(data, labels)
 
-	print(data.shape, data_adv.shape, data.detach().cpu().numpy())
+	# print(data.shape, data_adv.shape, data.detach().cpu().numpy())
 	np.save("temp_data", data.detach().cpu().numpy())
 	np.save("temp_data_adv", data_adv.detach().cpu().numpy())
-		
+
+	logits_data = logits_model(data)
+	logits_data_adv = logits_model(data_adv)
+	np.save("logits_data", logits_data.detach().cpu().numpy())
+	np.save("logits_data_adv", logits_data_adv.detach().cpu().numpy())
 
 	break 
 

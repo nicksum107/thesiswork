@@ -17,6 +17,6 @@ def normalize_np(data,mean,std):
 def unnormalize_np(data,mean,std):
     #input data B*W*H*C
     B,W,H,C=data.shape
-    mean=np.array(mean).reshape([1,1,1,C])
-    std=np.array(std).reshape([1,1,1,C])
+    mean=np.array(mean)#.reshape([1,1,1,C])
+    std=np.array(std)#.reshape([1,1,1,C])
     return data*std+mean

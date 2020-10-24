@@ -96,6 +96,7 @@ for data,labels in tqdm(val_loader):
 	data=data.to(device)
 	labels = labels.numpy()
 	output_clean = model(data).detach().cpu().numpy() # logits
+	# if want to get outputs - pass in aggr
 	print(output_clean.shape, labels.shape, output_clean.dtype)
 	for i in range(len(output_clean)):
 		print(labels[i])
