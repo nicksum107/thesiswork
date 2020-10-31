@@ -87,18 +87,17 @@ error_list=[]
 accuracy_list=[]
 patch_loc_list=[]
 
-print("here")
+# print("here")
 for data,labels in tqdm(val_loader):
 	
 	data,labels=data.to(device),labels.to(device)
 	data_adv,patch_loc = attacker.perturb(data, labels)
 
-	print(data.shape, data_adv.shape, data.detach().cpu().numpy())
-	np.save("temp_data", data.detach().cpu().numpy())
-	np.save("temp_data_adv", data_adv.detach().cpu().numpy())
-		
 
-	break 
+	# print(data.shape, data_adv.shape, data.detach().cpu().numpy())
+	# np.save("temp_data", data.detach().cpu().numpy())
+	# np.save("temp_data_adv", data_adv.detach().cpu().numpy())
+	# break 
 
 	output_adv = model(data_adv)
 	error_adv=torch.sum(torch.argmax(output_adv, dim=1) != labels).cpu().detach().numpy()/ data.size(0)
