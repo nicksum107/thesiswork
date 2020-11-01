@@ -114,6 +114,8 @@ todisp_attacked = np.transpose(norm_data_attacked, (0,2,3,1))
 logits = np.load('logits_data.npy')
 logits_attacked = np.load('logits_data_adv.npy')
 
+print(logits.shape)
+
 logits_disp = np.transpose(logits, (0,3,1,2))
 logits_disp_attacked = np.transpose(logits_attacked, (0,3,1,2))
 
