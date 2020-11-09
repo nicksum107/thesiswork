@@ -46,9 +46,15 @@ transform_test = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)), # noramlize channel to have mean, std dev
 ])
+
+current_adv = joblib.load(os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
+current_loc = joblib.load(os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
+print(current_adv.shape)
+
 testset = datasets.CIFAR10(root=DATA_DIR, train=False, download=True, transform=transform_test)
 
 val_loader = torch.utils.data.DataLoader(testset, batch_size=16, shuffle=False)
+
 
 #build and initialize model
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -82,14 +88,19 @@ model.eval()
 
 attacker = PatchAttacker(model, [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010],patch_size=args.patch_size,step_size=0.05,steps=500)
 
-adv_list=[]
-error_list=[]
+adv_list=[current_adv]
+error_list=[current_loc]
+# adv_list = []
+# error_list = []
 accuracy_list=[]
 patch_loc_list=[]
 
-# print("here")
+im_number = 0 
 for data,labels in tqdm(val_loader):
-	
+	if im_number < current_adv.shape[0]:
+		im_number += 16
+		print(im_number)
+		continue 
 	data,labels=data.to(device),labels.to(device)
 	data_adv,patch_loc = attacker.perturb(data, labels)
 
@@ -112,11 +123,20 @@ for data,labels in tqdm(val_loader):
 	error_list.append(error_adv)
 	accuracy_list.append(acc_clean)
 
+	# dump every batch, just in case
+	if int(im_number/16) % 16 == 0:
+		temp_adv_list = np.concatenate(adv_list)
+		temp_patch_loc_list = np.concatenate(patch_loc_list)
+		print('dumping', temp_adv_list.shape)
+		joblib.dump(temp_adv_list,os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
+		joblib.dump(temp_patch_loc_list,os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
+		print('finish dump')
+		# free memory of these np arrays
+		temp_adv_list = None 
+		temp_patch_loc_list = None 
+	im_number += 16
 
-adv_list = np.concatenate(adv_list)
-patch_loc_list = np.concatenate(patch_loc_list)
-joblib.dump(adv_list,os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
-joblib.dump(patch_loc_list,os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
+
 print("Attack success rate:",np.mean(error_list))
 print("Clean accuracy:",np.mean(accuracy_list))
 	

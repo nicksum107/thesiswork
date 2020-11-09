@@ -5,3 +5,4 @@ checkpoints/*
 utils/__pycache__
 slurm-*
 image_dumps/*
+dump/*
