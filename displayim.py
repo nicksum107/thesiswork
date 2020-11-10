@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils.normalize_utils import unnormalize_np
 import scipy.ndimage
+import scipy.signal
 import cv2
 
 def scale_logits(i, j): 
@@ -72,7 +73,7 @@ def locate_patch_fill(logit):
 
 #finds a square patch on the heatmap of the given size
 def locate_patch_window(heatmap, size):
-    window_thresh = 1/2
+    window_thresh = 1/3
 
 
     nz = np.zeros((heatmap.shape[0]-size+1, heatmap.shape[1]-size+1))
@@ -90,6 +91,13 @@ def locate_patch_window(heatmap, size):
     # return false if the candidate does not have many 
     return (nz[i,j] >= (size ** 2 * window_thresh)), scaled_i, scaled_j
 
+#max suss
+def locate_patch_avg(heatmap, size, prev_thresh, thresh2=0.3):
+    f = np.ones((size,size)) / (size ** 2)
+    smoothed = scipy.signal.convolve2d(heatmap, f, mode='valid')
+    i, j = np.unravel_index(smoothed.argmax(), smoothed.shape)
+    sd = np.std(heatmap)
+    return smoothed[i,j] >= (prev_thresh + thresh2 * sd), i*8, j*8
 
 # load
 mean = [0.4914, 0.4822, 0.4465]
@@ -153,7 +161,7 @@ for i in range(len(logits_disp)):
 
 cleanacc = 0 
 defenseacc = 0
-for i in range(len(data)):
+for i in range( len(data)):
 
     # plt.imshow(todisp[i])
     # plt.figure()
@@ -174,18 +182,18 @@ for i in range(len(data)):
     # plt.imshow(threshed_attacked[i, predict_attacked[i]])
     # plt.figure()
     
-    plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_original.png', np.clip(todisp[i], 0,1))
-    plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_attacked.png', np.clip(todisp_attacked[i],0,1))
+    plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_original.png', np.clip(todisp[i], 0,1))
+    plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_attacked.png', np.clip(todisp_attacked[i],0,1))
     
-    plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_correct_logits.png', logits_disp[i,predict[i]])
-    plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_correct_logits_target.png', logits_disp[i, predict_attacked[i]])
-    plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_attacked_logits.png', logits_disp_attacked[i,predict[i]])
-    plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_attacked_logits_target.png', logits_disp_attacked[i, predict_attacked[i]])
+    plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_correct_logits.png', logits_disp[i,predict[i]])
+    plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_correct_logits_target.png', logits_disp[i, predict_attacked[i]])
+    plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_attacked_logits.png', logits_disp_attacked[i,predict[i]])
+    plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_attacked_logits_target.png', logits_disp_attacked[i, predict_attacked[i]])
 
-    plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_correct_logits_thresh.png', threshed[i,predict[i]])
-    plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_correct_logits_target_thresh.png', threshed[i, predict_attacked[i]])
-    plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_attacked_logits_thresh.png', threshed_attacked[i,predict[i]])
-    plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_attacked_logits_target_thresh.png', threshed_attacked[i, predict_attacked[i]])
+    plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_correct_logits_thresh.png', threshed[i,predict[i]])
+    plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_correct_logits_target_thresh.png', threshed[i, predict_attacked[i]])
+    plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_attacked_logits_thresh.png', threshed_attacked[i,predict[i]])
+    plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_attacked_logits_target_thresh.png', threshed_attacked[i, predict_attacked[i]])
 
 
     
@@ -194,37 +202,36 @@ for i in range(len(data)):
     # found, (patch_x, patch_y), size_x, size_y = locate_patch(logits_disp_attacked[i, predict_attacked[i]])
     patch_size = 5
     
-    found, r, c = locate_patch_window(threshed[i, predict_attacked[i]], patch_size) 
+    found, r, c = locate_patch_avg(threshed[i, predict[i]], patch_size, thresh[i, predict[i]]) 
     if found: 
         print(i, 'clean found')
         adding = int(patch_size * 192/22)
         masked = np.array(todisp[i])
-        # print(r, c)
+        print(r, c)
         masked[r:r+adding, c:c+adding, :] = 0
-        # plt.imshow(masked)
-        # plt.title(str(i) + ' clean')
-        # plt.figure() 
+        plt.imshow(masked)
+        plt.title(str(i) + ' clean')
+        plt.figure() 
         
-        plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_clean_badmask.png', np.clip(masked, 0,1))
+        plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_clean_badmask.png', np.clip(masked, 0,1))
     else: 
         cleanacc+=1
         print(i, 'clean not found')
 
 
-    found, r, c = locate_patch_window(threshed_attacked[i, predict_attacked[i]], patch_size) 
+    found, r, c = locate_patch_avg(threshed_attacked[i, predict_attacked[i]], patch_size, thresh_attacked[i, predict_attacked[i]]) 
     if found: 
         print(i, 'attacked found')
         adding = int(patch_size * 192/22)
         masked = np.array(todisp_attacked[i])
-        # print(r, c)
+        print(r, c)
         masked[r:r+adding, c:c+adding, :] = 0
-        # plt.imshow(masked)
-        # plt.title(str(i) + ' attacked')
-        # plt.figure()
-        plt.imsave('./image_dumps/known_size_window/image_' + str(i) + '_attacked_goodmask.png', np.clip(masked, 0,1))
+        plt.imshow(masked)
+        plt.title(str(i) + ' attacked')
+        plt.figure()
+        plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_attacked_goodmask.png', np.clip(masked, 0,1))
         defenseacc += 1
     else:
-        
         print(i, 'attacked not found')
     # break
 plt.show()

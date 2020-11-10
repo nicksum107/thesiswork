@@ -48,10 +48,6 @@ def load_model(model_type, model_dir, clipping, device, aggr):
     model = model.to(device)
     return model
 
-def upscale_coords(i, j): 
-    # 3 downsamples occur in bagnet17
-    return 
-
 def threshold_torch(heatmaps, thresh_val=1.5):
     # print(heatmaps.shape)
     means = torch.mean(heatmaps, (1,2))
