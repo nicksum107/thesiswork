@@ -20,6 +20,35 @@ import os
 import matplotlib.pyplot as plt
 
 import argparse
+def load_model(model_type, model_dir, clipping, device, aggr):
+    if clipping > 0:
+        clip_range = [0,clipping]
+    else:
+        clip_range = None
+        
+    if 'bagnet17' in model_type:
+        model = nets.bagnet.bagnet17(clip_range=clip_range,aggregation=aggr)
+    elif 'bagnet33' in model_type:
+        model = nets.bagnet.bagnet33(clip_range=clip_range,aggregation=aggr)
+    elif 'bagnet9' in model_type:
+        model = nets.bagnet.bagnet9(clip_range=clip_range,aggregation=aggr)
+    elif 'resnet50' in model_type:
+        model = nets.resnet.resnet50(clip_range=clip_range,aggregation=aggr)
+    
+    num_ftrs = model.fc.in_features
+    model.fc = nn.Linear(num_ftrs, 10)
+    model = model.to(device)
+    if device == 'cuda':
+        model = torch.nn.DataParallel(model)
+        cudnn.benchmark = True
+    print('restoring model from checkpoint...')
+    checkpoint = torch.load(os.path.join(model_dir,model_type+'.pth'))
+    model.load_state_dict(checkpoint['net'])
+    model = model.to(device)
+    model.eval()
+    return model
+
+	
 parser = argparse.ArgumentParser()
 parser.add_argument("--dump_dir",default='patch_adv',type=str,help="directory to save attack results")
 parser.add_argument("--model_dir",default='checkpoints',type=str,help="path to checkpoints")
@@ -28,6 +57,7 @@ parser.add_argument("--data_dir",default='./data/cifar',type=str,help="path to d
 parser.add_argument("--patch_size",default=30,type=int,help="size of the adversarial patch")
 parser.add_argument("--clip",default=-1,type=int,help="clipping value; do clipping when this argument is set to positive")
 parser.add_argument("--aggr",default='mean',type=str,help="aggregation methods. one of mean, median, cbn")
+# parser.add_argument("--restart", default=False, type=bool, help="remake dataset?")
 
 args = parser.parse_args()
 
@@ -47,9 +77,9 @@ transform_test = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)), # noramlize channel to have mean, std dev
 ])
 
-current_adv = joblib.load(os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
-current_loc = joblib.load(os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
-print(current_adv.shape)
+# current_adv = joblib.load(os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
+# current_loc = joblib.load(os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
+# print(current_adv.shape)
 
 testset = datasets.CIFAR10(root=DATA_DIR, train=False, download=True, transform=transform_test)
 
@@ -88,27 +118,22 @@ model.eval()
 
 attacker = PatchAttacker(model, [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010],patch_size=args.patch_size,step_size=0.05,steps=500)
 
-adv_list=[current_adv]
-error_list=[current_loc]
-# adv_list = []
-# error_list = []
-accuracy_list=[]
+# adv_list=[current_adv]
+# patch_loc_list=[current_loc]
+adv_list=[]
 patch_loc_list=[]
+accuracy_list=[]
+error_list=[]
 
 im_number = 0 
 for data,labels in tqdm(val_loader):
-	if im_number < current_adv.shape[0]:
-		im_number += 16
-		print(im_number)
-		continue 
+	# if im_number < current_adv.shape[0]:
+	# 	im_number += 16
+	# 	print(im_number)
+	# 	continue 
 	data,labels=data.to(device),labels.to(device)
 	data_adv,patch_loc = attacker.perturb(data, labels)
 
-
-	# print(data.shape, data_adv.shape, data.detach().cpu().numpy())
-	# np.save("temp_data", data.detach().cpu().numpy())
-	# np.save("temp_data_adv", data_adv.detach().cpu().numpy())
-	# break 
 
 	output_adv = model(data_adv)
 	error_adv=torch.sum(torch.argmax(output_adv, dim=1) != labels).cpu().detach().numpy()/ data.size(0)
@@ -123,20 +148,33 @@ for data,labels in tqdm(val_loader):
 	error_list.append(error_adv)
 	accuracy_list.append(acc_clean)
 
-	# dump every batch, just in case
+	# dump every 16 batches
 	if int(im_number/16) % 16 == 0:
 		temp_adv_list = np.concatenate(adv_list)
 		temp_patch_loc_list = np.concatenate(patch_loc_list)
-		print('dumping', temp_adv_list.shape)
-		joblib.dump(temp_adv_list,os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
-		joblib.dump(temp_patch_loc_list,os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
+		print('dumping', temp_adv_list.shape, temp_patch_loc_list.shape)
+		# joblib.dump(temp_adv_list,os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
+		# joblib.dump(temp_patch_loc_list,os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
 		print('finish dump')
 		# free memory of these np arrays
 		temp_adv_list = None 
 		temp_patch_loc_list = None 
+		
+		print("Attack success rate:",np.mean(error_list))
+		print("Clean accuracy:",np.mean(accuracy_list))
 	im_number += 16
 
 
 print("Attack success rate:",np.mean(error_list))
 print("Clean accuracy:",np.mean(accuracy_list))
 	
+
+temp_adv_list = np.concatenate(adv_list)
+temp_patch_loc_list = np.concatenate(patch_loc_list)
+print('dumping', temp_adv_list.shape)
+# joblib.dump(temp_adv_list,os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
+# joblib.dump(temp_patch_loc_list,os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
+print('finish dump')
+# free memory of these np arrays
+temp_adv_list = None 
+temp_patch_loc_list = None 
