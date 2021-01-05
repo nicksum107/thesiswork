@@ -1,9 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from utils.normalize_utils import unnormalize_np
+import torch
+from torchvision import datasets
 import scipy.ndimage
 import scipy.signal
 import cv2
+import joblib
+
 
 def scale_logits(i, j): 
     # 3 downsamples occur in bagnet17
@@ -104,8 +108,16 @@ mean = [0.4914, 0.4822, 0.4465]
 std = [0.2023, 0.1994, 0.2010]
 thresh_val = 1.5 #hyperparam to set
 
-data = np.load('temp_data.npy')
-data_attacked = np.load('temp_data_adv.npy')
+# data = np.load('temp_data.npy')
+# data_attacked = np.load('temp_data_adv.npy')
+
+cifar= datasets.CIFAR10(root=DATA_DIR, train=False, download=True, transform=transform_test)
+val_loader = torch.utils.data.DataLoader(cifar, batch_size=16, shuffle=False)
+for clean_data, lables in val_loader: 
+    data = clean_data 
+
+data_adv = joblib.load(os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
+data_adv = data_adv[:16]
 
 # norm data
 norm_data = np.zeros(data.shape)

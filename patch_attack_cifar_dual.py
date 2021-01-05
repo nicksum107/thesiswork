@@ -58,6 +58,7 @@ parser.add_argument("--data_dir",default='./data/cifar',type=str,help="path to d
 parser.add_argument("--patch_size",default=30,type=int,help="size of the adversarial patch")
 parser.add_argument("--clip",default=-1,type=int,help="clipping value; do clipping when this argument is set to positive")
 parser.add_argument("--aggr",default='mean',type=str,help="aggregation methods. one of mean, median, cbn")
+parser.add_argument('--recalc', action='store_true', default=False, help='debug output')
 print('patch attack dual')
 args = parser.parse_args()
 
@@ -69,6 +70,10 @@ if not os.path.exists('dump'):
 if not os.path.exists(DUMP_DIR):
 	os.mkdir(DUMP_DIR)
 
+if not os.path.exists(os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size))):
+	args.recalc = True 
+	print('force recalc')
+
 img_size=192
 #prepare data
 transform_test = transforms.Compose([
@@ -77,9 +82,10 @@ transform_test = transforms.Compose([
 	transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)), # noramlize channel to have mean, std dev
 ])
 
-current_adv = joblib.load(os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
-current_loc = joblib.load(os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
-print(current_adv.shape)
+if not args.recalc: 
+	current_adv = joblib.load(os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
+	current_loc = joblib.load(os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
+	print('loaded: ', current_adv.shape)
 
 testset = datasets.CIFAR10(root=DATA_DIR, train=False, download=True, transform=transform_test)
 
@@ -94,10 +100,13 @@ model2 = load_model(args.model2, MODEL_DIR, args.clip, device, 'mean')
 
 attacker = DualPatchAttacker(model1, model2, [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010],patch_size=args.patch_size,step_size=0.01,steps=750)
 
-adv_list=[current_adv]
-patch_loc_list=[current_loc]
-# adv_list=[]
-# patch_loc_list=[]
+if args.recalc:
+	adv_list=[]
+	patch_loc_list=[]
+else:
+	adv_list=[current_adv]
+	patch_loc_list=[current_loc]
+
 accuracy_list1=[]
 error_list1=[]
 accuracy_list2=[]
@@ -105,9 +114,9 @@ error_list2=[]
 
 im_number = 0 
 for data,labels in tqdm(val_loader):
-	if im_number < current_adv.shape[0]:
+	if (not args.recalc) and (im_number < current_adv.shape[0]):
+		print('skip', im_number)
 		im_number += 16
-		print(im_number)
 		continue 
 	data,labels=data.to(device),labels.to(device)
 	data_adv,patch_loc = attacker.perturb(data, labels)
@@ -134,7 +143,7 @@ for data,labels in tqdm(val_loader):
 	patch_loc_list.append(patch_loc)
 	adv_list.append(data_adv)
 	# dump every 16 batches
-	if (int(im_number/16) % 4 == 0):
+	if (int(im_number/16) % 16 == 0):
 		temp_adv_list = np.concatenate(adv_list)
 		temp_patch_loc_list = np.concatenate(patch_loc_list)
 		print('dumping', temp_adv_list.shape, temp_patch_loc_list.shape)

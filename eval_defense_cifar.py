@@ -157,8 +157,8 @@ print('eval defense: size', args.patch_size, 'defense', args.defense)
 
 MODEL_DIR=os.path.join('.',args.model_dir)
 DATA_DIR=os.path.join(args.data_dir)
-DUMP_DIR=os.path.join('dump',args.dump_dir+'_{}'.format(args.attacked_model))
-# DUMP_DIR=os.path.join('dump','dual_patch_adv_bagnet17_192_resnet50_192_cifar')
+# DUMP_DIR=os.path.join('dump',args.dump_dir+'_{}'.format(args.attacked_model))
+DUMP_DIR=os.path.join('dump','dual_patch_adv_bagnet17_192_resnet50_192_cifar')
 if not os.path.exists('dump'):
 	os.mkdir('dump')
 if not os.path.exists(DUMP_DIR):
@@ -222,7 +222,7 @@ for clean_data, labels in tqdm(val_loader):
     clean_predict = torch.argmax(clean_output, dim=1)
     clean_acc = torch.sum(clean_predict == labels).cpu().detach().numpy() / clean_data.size(0)
     
-    del clean_output
+    # del clean_output
     del clean_predict 
     if args.debug:
         print('clean', clean_acc)
@@ -230,9 +230,14 @@ for clean_data, labels in tqdm(val_loader):
     del clean_acc 
 
     if different_final:
-        fin_clean_output = final_model(clean_data)
+        fin_clean_output = (clean_output + final_model(clean_data))/2
+        
+        
+        # fin_clean_output = final_model(clean_data)
         fin_clean_predict = torch.argmax(fin_clean_output, dim=1)
         fin_clean_acc = torch.sum(fin_clean_predict == labels).cpu().detach().numpy() / clean_data.size(0)
+        del clean_output###
+
         del fin_clean_output
         del fin_clean_predict
         if args.debug:
@@ -247,7 +252,7 @@ for clean_data, labels in tqdm(val_loader):
         attacked_output = attacked_model(torch.from_numpy(data_attacked))
         attacked_predict = torch.argmax(attacked_output, dim=1)
         attacked_acc = torch.sum(attacked_predict == labels).cpu().detach().numpy()/ data_attacked.shape[0]
-        del attacked_output
+        # del attacked_output
         if args.debug:
             print('attacked', attacked_acc)
         att_acc_list.append(attacked_acc)
@@ -263,9 +268,12 @@ for clean_data, labels in tqdm(val_loader):
         true_locs = true_locs.cpu().detach().numpy()
     
     if different_final:
-        fin_att_output = final_model(torch.from_numpy(data_attacked))
+        fin_att_output = (attacked_output + final_model(torch.from_numpy(data_attacked))) / 2
+        # fin_att_output = final_model(torch.from_numpy(data_attacked))
         fin_att_predict = torch.argmax(fin_att_output, dim=1)
         fin_att_acc = torch.sum(fin_att_predict==labels).cpu().detach().numpy() / data_attacked.shape[0]
+        del attacked_output ###
+
         del fin_att_output 
         del fin_att_predict 
         if args.debug:
@@ -279,7 +287,7 @@ for clean_data, labels in tqdm(val_loader):
     defended_output = attacked_model(torch.from_numpy(defended_data))
     defended_predict = torch.argmax(defended_output, dim=1)
     defended_acc = torch.sum(defended_predict == labels).cpu().detach().numpy()/ defended_data.shape[0]
-    del defended_output 
+    # del defended_output 
     del defended_predict 
     if args.debug:
         print(args.defense, 'defense attacked', defended_acc)
@@ -287,9 +295,11 @@ for clean_data, labels in tqdm(val_loader):
     del defended_acc
 
     if different_final:
-        fin_def_output = final_model(torch.from_numpy(defended_data))
+        fin_def_output = (defended_output + final_model(torch.from_numpy(defended_data)))/2
+        # fin_def_output = final_model(torch.from_numpy(defended_data))
         fin_def_predict = torch.argmax(fin_def_output, dim=1)
         fin_def_acc = torch.sum(fin_def_predict == labels).cpu().detach().numpy() / defended_data.shape[0]
+        del defended_output ##
         del fin_def_output
         del fin_def_predict
         if args.debug:
@@ -305,7 +315,7 @@ for clean_data, labels in tqdm(val_loader):
     clean_def_output = attacked_model(torch.from_numpy(clean_def_data))
     clean_def_predict = torch.argmax(clean_def_output, dim=1)
     clean_def_acc = torch.sum(clean_def_predict == labels).cpu().detach().numpy()/ clean_def_output.shape[0]
-    del clean_def_output
+    # del clean_def_output
     del clean_def_predict 
     if args.debug:
         print(args.defense, 'defense clean', clean_def_acc)
@@ -313,9 +323,12 @@ for clean_data, labels in tqdm(val_loader):
     del clean_def_acc
 
     if different_final:
-        fin_def_cln_output = final_model(torch.from_numpy(clean_def_data))
+        fin_def_cln_output = (clean_def_output + final_model(torch.from_numpy(clean_def_data)))/2
+        
+        # fin_def_cln_output = final_model(torch.from_numpy(clean_def_data))
         fin_def_cln_predict = torch.argmax(fin_def_cln_output, dim=1)
         fin_def_cln_acc = torch.sum(fin_def_cln_predict == labels).cpu().detach().numpy() / clean_def_data.shape[0]
+        del clean_def_output##
         del fin_def_cln_output
         del fin_def_cln_predict
         if args.debug:
