@@ -1,13 +1,52 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils.normalize_utils import unnormalize_np
-import torch
-from torchvision import datasets
+import sys
+sys.path.insert(0, './utils') 
+from normalize_utils import unnormalize_np
 import scipy.ndimage
 import scipy.signal
 import cv2
-import joblib
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+import torch.backends.cudnn as cudnn
+from  torchvision import datasets, transforms
+import os 
+import sys
+sys.path.insert(0, './nets') 
+import bagnet
+import resnet
+import PIL
+import matplotlib.pyplot as plt
 
+def load_model(model_type, model_dir, clipping, device, aggr):
+    if clipping > 0:
+        clip_range = [0,clipping]
+    else:
+        clip_range = None
+        
+    if 'bagnet17' in model_type:
+        model = bagnet.bagnet17(clip_range=clip_range,aggregation=aggr)
+    elif 'bagnet33' in model_type:
+        model = bagnet.bagnet33(clip_range=clip_range,aggregation=aggr)
+    elif 'bagnet9' in model_type:
+        model = bagnet.bagnet9(clip_range=clip_range,aggregation=aggr)
+    elif 'resnet50' in model_type:
+        model = resnet.resnet50(clip_range=clip_range,aggregation=aggr)
+    
+    num_ftrs = model.fc.in_features
+    model.fc = nn.Linear(num_ftrs, 10)
+    model = model.to(device)
+    if device == 'cuda':
+        model = torch.nn.DataParallel(model)
+        cudnn.benchmark = True
+    print('restoring model from checkpoint...')
+    checkpoint = torch.load(os.path.join(model_dir,model_type+'.pth'))
+    model.load_state_dict(checkpoint['net'])
+    model = model.to(device)
+    model.eval()
+    return model
 
 def scale_logits(i, j): 
     # 3 downsamples occur in bagnet17
@@ -76,7 +115,7 @@ def locate_patch_fill(logit):
 
 
 #finds a square patch on the heatmap of the given size
-def locate_patch_window(heatmap, size):
+def locate_patch_window(heatmap, size, prev_thresh= 0):
     window_thresh = 1/3
 
 
@@ -173,6 +212,8 @@ for i in range(len(logits_disp)):
 
 cleanacc = 0 
 defenseacc = 0
+
+
 for i in range( len(data)):
 
     # plt.imshow(todisp[i])
@@ -214,7 +255,7 @@ for i in range( len(data)):
     # found, (patch_x, patch_y), size_x, size_y = locate_patch(logits_disp_attacked[i, predict_attacked[i]])
     patch_size = 5
     
-    found, r, c = locate_patch_avg(threshed[i, predict[i]], patch_size, thresh[i, predict[i]]) 
+    found, r, c = locate_patch_window(threshed[i, predict[i]], patch_size, thresh[i, predict[i]]) 
     if found: 
         print(i, 'clean found')
         adding = int(patch_size * 192/22)
@@ -224,6 +265,16 @@ for i in range( len(data)):
         plt.imshow(masked)
         plt.title(str(i) + ' clean')
         plt.figure() 
+        
+        if i == 11: 
+            print('here')
+            print(masked.shape)
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            model = load_model('bagnet17_192', './checkpoints', -1, device, 'mean')
+            masked = np.array(masked, dtype=np.float32)
+            toeval = torch.from_numpy(np.transpose(masked, (2,0,1)))[None, :, :]
+            output = model(toeval)
+            print(output)
         
         plt.imsave('./image_dumps/known_size_avg/image_' + str(i) + '_clean_badmask.png', np.clip(masked, 0,1))
     else: 
