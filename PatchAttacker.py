@@ -78,6 +78,7 @@ class PatchAttacker:
                 grads = torch.autograd.grad(loss, x,retain_graph=False)[0]
 
                 if step % 10 ==0:
+                    print(loss)
                     if worst_loss is None:
                         worst_loss = loss_ind.detach().clone()
                         worst_x = x.detach().clone()
