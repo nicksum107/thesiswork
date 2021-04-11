@@ -1,6 +1,7 @@
 # Senior Thesis: "A Defense against Adversarial Patch Attacks on Neural Network Classifiers"
 By Nicholas Sum
-with By [Chong Xiang](http://xiangchong.xyz/), [Saeed Mahloujifar](https://smahloujifar.github.io/) [Prattek Mittal](https://www.princeton.edu/~pmittal/)
+
+with [Chong Xiang](http://xiangchong.xyz/), [Saeed Mahloujifar](https://smahloujifar.github.io/), [Prattek Mittal](https://www.princeton.edu/~pmittal/)
 
 
 Code for Princeton Senior Thesis: "A Defense against Adversarial Patch Attacks on Neural Network Classifiers" [link]
