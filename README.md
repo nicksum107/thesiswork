@@ -1,9 +1,16 @@
-# PatchGuard: Provable Defense against Adversarial Patches Using Masks on Small Receptive Fields
-By [Chong Xiang](http://xiangchong.xyz/), [Arjun Nitin Bhagoji](http://www.princeton.edu/~abhagoji/), [Vikash Sehwag](https://scholar.princeton.edu/vvikash/home), [Prattek Mittal](https://www.princeton.edu/~pmittal/)
+# Senior Thesis: "A Defense against Adversarial Patch Attacks on Neural Network Classifiers"
+By Nicholas Sum
 
-Code for paper "PatchGuard: Provable Defense against Adversarial Patches Using Masks on Small Receptive Fields" [arXiv](https://arxiv.org/abs/2005.10884)
+with [Chong Xiang](http://xiangchong.xyz/), [Saeed Mahloujifar](https://smahloujifar.github.io/), [Prattek Mittal](https://www.princeton.edu/~pmittal/)
 
-<img src="./doc/overview.png" width="100%" alt="defense overview pipeline" align=center>
+
+Code for Princeton Senior Thesis: "A Defense against Adversarial Patch Attacks on Neural Network Classifiers" [link]
+
+- For fall work, majority of work can be found in eval_defense_cifar.py, patch_attack_cifar_dual.py, patch_attack_cifar.py, and PatchAttacker.py. 
+- [fall report]
+- For spring work, and final thesis work, code can be found in nets/resnet.py, test_mod_resnet.py, test_mod_resnet_eval.py, and PatchAttacker.py. 
+- [thesis]
+- link to google drive and/or the library page
 
 ## Requirements
 The code is tested with Python 3.6 and PyTorch 1.3.0. The complete list of required packages are available in `requirement.txt`, and can be installed with `pip install -r requirement.txt`. The code should be compatible with other versions of packages.
@@ -27,25 +34,24 @@ The code is tested with Python 3.6 and PyTorch 1.3.0. The complete list of requi
 |   ├── normalize_utils.py           #utils for nomrlize images stored in numpy array (unused in the paper)
 |   ├── cutout.py                    #utils for CUTOUT training (unused)
 |   └── progress_bar.py              #progress bar (used in train_cifar.py)
-| 
-├── misc                             #useful scripts; move them to the main directory for execution
-|   ├── test_acc_imagenet.py         #test clean accuracy of resnet/bagnet on imagenet(te); support clipping, median operations
-|   ├── test_acc_cifar.py            #test clean accuracy of resnet/bagnet on cifar; support clipping, median operations
-|   ├── train_imagenet.py            #train resnet/bagnet for imagenet(te)
-|   ├── train_cifar.py               #train resnet/bagnet for cifar
-|   ├── patch_attack_imagenet.py     #empirically attack resnet/bagnet trained on imagenet(te)
-|   ├── patch_attack_cifar.py        #empirically attack resnet/bagnet trained on cifar
-|   ├── PatchAttacker.py             #untargeted adversarial patch attack 
-|   ├── ds_imagenet.py               #ds for imagenet(te)
-|   └── ds_cifar.py                  #ds for imagenet(te)
+├── test_acc_imagenet.py             #test clean accuracy of resnet/bagnet on imagenet(te); support clipping, median operations
+├── test_acc_cifar.py                #test clean accuracy of resnet/bagnet on cifar; support clipping, median operations
+├── train_imagenet.py                #train resnet/bagnet for imagenet(te)
+├── train_cifar.py                   #train resnet/bagnet for cifar
+├── patch_attack_imagenet.py         #empirically attack resnet/bagnet trained on imagenet(te)
+├── patch_attack_cifar.py            #empirically attack resnet/bagnet trained on cifar
+├── patch_attack_cifar_dual.py       #empirically attack resnet/bagnet trained on cifar on two models
+├── PatchAttacker.py                 #untargeted adversarial patch attack 
+├── ds_imagenet.py                   #ds for imagenet(te)
+├── ds_cifar.py                      #ds for imagenet(te)
 |
 └── checkpoints                      #directory for checkpoints
     ├── README.md                    #details of each checkpoint
     └── ...                          #model checkpoints
 ```
+TODO: finish this!
+
 ## Datasets
-- [ImageNet](http://www.image-net.org/) (ILSVRC2012)
-- [ImageNette](https://github.com/fastai/imagenette) ([Full size](https://s3.amazonaws.com/fast-ai-imageclas/imagenette2.tgz))
 - [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html)
 
 ## Usage
@@ -57,12 +63,10 @@ The code is tested with Python 3.6 and PyTorch 1.3.0. The complete list of requi
 
 - See `example_cmd.sh` for example commands for running the code.
 
-If anything is unclear, please open an issue or contact Chong Xiang (cxiang@princeton.edu).
-
-## Notes
-- There was a major change update to `defense_utils.py` on 08/01/2020. Please check the latest version of paper on [arXiv](https://arxiv.org/abs/2005.10884) and use the new provable analysis in `defense_utils.py`.
+If anything is unclear, please open an issue or contact Nicholas Sum (nsum@princeton.edu / nicksum107@gmail.com) or Chong Xiang (cxiang@princeton.edu).
 
 ## Related Repositories
 - [certifiedpatchdefense](https://github.com/Ping-C/certifiedpatchdefense)
 - [patchSmoothing](https://github.com/alevine0/patchSmoothing)
 - [bag-of-local-features-models](https://github.com/wielandbrendel/bag-of-local-features-models)
+- [PatchGuard](https://github.com/inspire-group/PatchGuard)
