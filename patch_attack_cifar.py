@@ -77,9 +77,9 @@ transform_test = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)), # noramlize channel to have mean, std dev
 ])
 
-# current_adv = joblib.load(os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
-# current_loc = joblib.load(os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
-# print(current_adv.shape)
+current_adv = joblib.load(os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
+current_loc = joblib.load(os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
+print(current_adv.shape)
 
 testset = datasets.CIFAR10(root=DATA_DIR, train=False, download=True, transform=transform_test)
 
@@ -118,19 +118,19 @@ model.eval()
 
 attacker = PatchAttacker(model, [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010],patch_size=args.patch_size,step_size=0.05,steps=500)
 
-# adv_list=[current_adv]
-# patch_loc_list=[current_loc]
-adv_list=[]
-patch_loc_list=[]
+adv_list=[current_adv]
+patch_loc_list=[current_loc]
+# adv_list=[]
+# patch_loc_list=[]
 accuracy_list=[]
 error_list=[]
 
 im_number = 0 
 for data,labels in tqdm(val_loader):
-	# if im_number < current_adv.shape[0]:
-	# 	im_number += 16
-	# 	print(im_number)
-	# 	continue 
+	if im_number < current_adv.shape[0]:
+		im_number += 16
+		print(im_number)
+		continue 
 	data,labels=data.to(device),labels.to(device)
 	data_adv,patch_loc = attacker.perturb(data, labels)
 
@@ -153,8 +153,8 @@ for data,labels in tqdm(val_loader):
 		temp_adv_list = np.concatenate(adv_list)
 		temp_patch_loc_list = np.concatenate(patch_loc_list)
 		print('dumping', temp_adv_list.shape, temp_patch_loc_list.shape)
-		# joblib.dump(temp_adv_list,os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
-		# joblib.dump(temp_patch_loc_list,os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
+		joblib.dump(temp_adv_list,os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
+		joblib.dump(temp_patch_loc_list,os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
 		print('finish dump')
 		# free memory of these np arrays
 		temp_adv_list = None 
@@ -172,8 +172,8 @@ print("Clean accuracy:",np.mean(accuracy_list))
 temp_adv_list = np.concatenate(adv_list)
 temp_patch_loc_list = np.concatenate(patch_loc_list)
 print('dumping', temp_adv_list.shape)
-# joblib.dump(temp_adv_list,os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
-# joblib.dump(temp_patch_loc_list,os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
+joblib.dump(temp_adv_list,os.path.join(DUMP_DIR,'patch_adv_list_{}.z'.format(args.patch_size)))
+joblib.dump(temp_patch_loc_list,os.path.join(DUMP_DIR,'patch_loc_list_{}.z'.format(args.patch_size)))
 print('finish dump')
 # free memory of these np arrays
 temp_adv_list = None 
