@@ -26,7 +26,8 @@ The code is tested with Python 3.6 and PyTorch 1.3.0. The complete list of requi
 ├── mask_ds_cifar.py                 #mask-ds for cifar
 ├── nets
 |   ├── bagnet.py                    #modified bagnet model for mask-bn
-|   ├── resnet.py                    #modified resnet model for mask-bn
+|   ├── resnet_original.py           #modified resnet model for mask-bn
+|   ├── resnet.py                    #modified resnet model for this thesis
 |   ├── dsresnet_imgnt.py            #ds-resnet-50 for imagenet(te)
 |   └── dsresnet_cifar.py            #ds-resnet-18 for cifar
 ├── utils
@@ -44,6 +45,8 @@ The code is tested with Python 3.6 and PyTorch 1.3.0. The complete list of requi
 ├── PatchAttacker.py                 #untargeted adversarial patch attack 
 ├── ds_imagenet.py                   #ds for imagenet(te)
 ├── ds_cifar.py                      #ds for imagenet(te)
+├── test_mod_resnet.py               #testing script for adaptive attack on defense
+├── test_mod_resnet_eval.py          #use modified resnet model to evaluate defense from this thesis
 |
 └── checkpoints                      #directory for checkpoints
     ├── README.md                    #details of each checkpoint
