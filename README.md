@@ -52,7 +52,7 @@ The code is tested with Python 3.6 and PyTorch 1.3.0. The complete list of requi
     ├── README.md                    #details of each checkpoint
     └── ...                          #model checkpoints
 ```
-TODO: finish this!
+NOTE: except for test_mod_resnet and test_mod_resnet_eval, do not use nets/resnet.py!
 
 ## Datasets
 - [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html)
