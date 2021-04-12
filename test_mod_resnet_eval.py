@@ -95,14 +95,14 @@ transform_test = transforms.Compose([
 testset = datasets.CIFAR10(root=DATA_DIR, train=False,
                            download=True, transform=transform_test)
 
-val_loader = torch.utils.data.DataLoader(testset, batch_size=1, shuffle=False)
+val_loader = torch.utils.data.DataLoader(testset, batch_size=16, shuffle=False)
 
 
 # build and initialize model
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-model = load_model(args.model, args.model_dir, args.clip, device, args.aggr, dohisto=False, collapsefunc='max', ret_mask_activations=True, doforwardmask=False)
-attacker = AdaptivePatchAttacker(model, [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010],patch_size=args.patch_size,random_start=False, step_size=0.05,steps=100, ratio=5e11)
+model = load_model(args.model, args.model_dir, args.clip, device, args.aggr, dohisto=False, collapsefunc=None, ret_mask_activations=False, doforwardmask=False)
+attacker = PatchAttacker(model, [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010],patch_size=args.patch_size,random_start=False, step_size=0.05,steps=750)#750
 
 model2 = load_model(args.model, args.model_dir, args.clip, device, args.aggr, dohisto=True, collapsefunc='max', ret_mask_activations=False, doforwardmask=True)
 
@@ -120,33 +120,40 @@ im_number = 0
 batch_size=16
 batch_num = 0
 for data, labels in tqdm(val_loader):
-    if im_number < 3:
-        im_number += 1
-        continue
     # if im_number < current_adv.shape[0]:
     # 	im_number += 16
     # 	print(im_number)
     # 	continue
+
     data, labels = data.to(device), labels.to(device)
     
 
-    data_adv,patch_loc = attacker.perturb(data, labels, loc=(76,76))
+    data_adv,patch_loc = attacker.perturb(data, labels)
+    # data_adv, patch_loc = torch.from_numpy(current_adv).to(device), current_loc
 
     # data_adv = torch.from_numpy(current_adv[batch_num*batch_size:(batch_num+1)*batch_size])
     # patch_loc = torch.from_numpy(current_loc[batch_num*batch_size:(batch_num+1)*batch_size])
 
-    output_clean = model2(data)
+    output_clean = model(data)
     acc_clean=torch.sum(torch.argmax(output_clean, dim=1) == labels).cpu().detach().numpy()/ data.size(0)
     print(acc_clean)
     undef_clnacc_list.append(acc_clean)
     
-    output_adv = model2(data_adv)
+    output_adv = model(data_adv)
     acc_adv=torch.sum(torch.argmax(output_adv, dim=1) == labels).cpu().detach().numpy()/ data.size(0)
     print(acc_adv)
     undef_atkacc_list.append(acc_adv)
 
-    break
+    output_clean = model2(data)
+    acc_clean=torch.sum(torch.argmax(output_clean, dim=1) == labels).cpu().detach().numpy()/ data.size(0)
+    print(acc_clean)
+    def_clnacc_list.append(acc_clean)
     
+    output_adv = model2(data_adv)
+    acc_adv=torch.sum(torch.argmax(output_adv, dim=1) == labels).cpu().detach().numpy()/ data.size(0)
+    print(acc_adv)
+    def_atkacc_list.append(acc_adv)
+
     data_adv = data_adv.cpu().detach().numpy()
     patch_loc = patch_loc.cpu().detach().numpy()
 

@@ -9,7 +9,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.signal
 
-
+class MaskFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, i, r, c, size):
+        # ctx.save_for_backward(i, r, c, size)
+        mask = torch.zeros(input.shape).to(input.device)
+        mask[i,:, r:(r+size), c:(c+size)] = 1
+        return torch.where(mask == 1, torch.tensor(0.).to(input.device), input) 
+    @staticmethod
+    def backward(ctx, grad_output):
+        # i,r,c, size = ctx.saved_tensors
+        # if we want to mark mask on the backwards pass
+        # mask = torch.ones(grad_output.shape).to(grad_output.device)
+        # mask[i,:, r:(r+size), c:(c+size)] = 1 
+        return grad_output, None, None, None, None
 
 try:
     from torch.hub import load_state_dict_from_url
@@ -157,7 +170,8 @@ class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None, clip_range=None, aggregation = 'mean', 
-                 dohisto=False, collapsefunc=None):
+                 dohisto=False, collapsefunc=None, ret_mask_activations=False, 
+                 doforwardmask=True):
         super(ResNet, self).__init__()
         self.i = 0
         self.clip_range = clip_range
@@ -208,6 +222,9 @@ class ResNet(nn.Module):
         self.fc = nn.Linear(512 * block.expansion, num_classes)
         self.dohisto = dohisto
         self.collapsefunc = collapsefunc
+        self.mask = MaskFunction.apply
+        self.ret_mask_activations = ret_mask_activations 
+        self.doforwardmask = doforwardmask
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -250,145 +267,116 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    # get a histo of all features, flattened through the batch
+    # save a fig of the activations at the layer
     def _get_histo(self, x, layer):
-        if self.dohisto:
-            pass
-            # print(torch.mean(x))
-            # flat = torch.flatten(x).cpu().detach().numpy()
-            # # print(np.max(flat), np.min(flat))
-            # n, bins = np.histogram(flat, bins=50)
-            
-            # bins_mean = [0.5 * (bins[i] + bins[i+1]) for i in range(len(n))]
-            # plt.plot(bins_mean, n, label='layer'+str(layer))
-
-            
-            # out = x.cpu().detach().numpy()
-            # out = np.linalg.norm(out, axis=1).flatten()
-            # print(out.shape)
-            # plt.figure()
-            # _ = plt.hist(out)
-            # plt.savefig(name)
-            
-            batch = x.cpu().detach().numpy()       
+        if self.dohisto:            
+            batch = x.cpu().detach().numpy()
             for i in range(len(x)):
                 out = batch[i]
                 if layer==-1: 
-                    out = np.transpose(out, (1,2,0))
+                    # unnormalize
+                    out[0] = out[0] * 0.2023 + 0.4914
+                    out[1] = out[1] * 0.1994 + 0.4822
+                    out[2] = out[2] * 0.2010 + 0.4465
+                    
+                    out = np.transpose(out, (1,2,0)) 
+                    s = '00'
                 else: 
                     out = np.max(out, axis=0)
+                    s = str(layer)
+
+
                 plt.figure()
                 plt.imshow(out)
-                plt.savefig(str(i) + '_adp_atk_layer_' + str(layer))
+                plt.savefig('image_dumps/adaptive/'+str(i) + '_layer_' + s)
                 plt.close()
 
             
     def _mask(self, x, mean, stddev, patchsizes):
-        # collapse in C
+        # analyze in np for ease of use - TODO: parallelize in pytorch
         temp = x.cpu().detach().numpy()
         mean_ = mean.cpu().detach().numpy()
         stddev_ = stddev.cpu().detach().numpy()
-        # print(mean, stddev)
         
+        # collapse over channels
         if self.collapsefunc == 'max':
             collapsed = np.max(temp, axis=1)
-            # print('maxed', collapsed.shape)
             mean_ = np.max(mean_)
             stddev_ = np.max(stddev_)
         elif self.collapsefunc == 'l2':
             collapsed = np.linalg.norm(temp, axis=1)
-            # print('l2ed', collapsed.shape)
             mean_ = np.linalg.norm(mean_)
             stddev_ = np.linalg.norm(stddev_)
         else: 
-            return x
+            return x, None
 
+        masked_act = torch.zeros(collapsed.shape).to(x.device)
         for i in range(len(collapsed)):
             max_=-1
             r,c = 0,0
             size = patchsizes[0]
+            # find patch in scale space
             for s in range(patchsizes[0], patchsizes[1]):
-                f = np.ones((s,s,))/ (s) #note not normalized
+                # 1/s box kernel
+                f = np.ones((s,s,))/ (s) 
                 smoothed = scipy.signal.convolve2d(collapsed[i,:,:], f, mode='valid')
                 curr_max = smoothed.max()
                 if curr_max > max_:
                     max_ = curr_max 
                     r,c, = np.unravel_index(smoothed.argmax(), smoothed.shape)
                     size = s
-            # TODO: set threshold/probablistic mask
-            # /s is due to the values not being normalized
-            if max_/size > mean_+stddev_*2:  
-                mask = torch.zeros(x.shape).to('cuda')
-                mask[i,:, r:(r+size), c:(c+size)] = 1
-                x = torch.where(mask == 1, torch.tensor(0.).to('cuda'), x) 
-        
-        return x
+
+            # /s is renormalization the values not being normalized
+            if max_/size > mean_ + 2 * stddev_: 
+                # for adaptive attack, return the masked activations
+                masked_act[i, r:(r+size), c:(c+size)] = torch.max(x[i, :, r:(r+size), c:(c+size)], dim=0)[0]
+
+                # for adaptive attack, do not do forward mask 
+                if self.doforwardmask: 
+                    x = self.mask(x, torch.tensor(i), torch.tensor(r), torch.tensor(c), torch.tensor(size))
+        return x, masked_act
         
     def _forward_impl(self, x):
         # See note [TorchScript super()]
         # print(x.shape)
+        activation_list = []
+
         self._get_histo(x, -1)
 
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        # print(x.shape)
-        x = self._mask(x, self.bn1.bias, self.bn1.weight, (18,26)) 
+        x, masked_act = self._mask(x, self.bn1.bias, self.bn1.weight, (15,24)) 
+        if self.ret_mask_activations: 
+            activation_list.append(masked_act)
+
+        self._get_histo(x, 0)
         x = self.maxpool(x)
 
-        # if self.dohisto:
-        #     plt.figure()
-            # plt.semilogy()
-        
-        self._get_histo(x, 0)
-
         x = self.layer1(x)
-        # zero = torch.zeros(x.size()).to('cuda')
-        # x = torch.where(x < 1.0, x, zero)
-        # x = torch.clamp(x, 0, 2.5)
         # print('layer1', self.layer1[2].bn3.bias, self.layer1[2].bn3.weight)
-        # print(x.shape)
-        x = self._mask(x, torch.add(self.layer1[2].bn3.bias, self.layer1[1].bn3.bias), 
+        x, masked_act = self._mask(x, torch.add(self.layer1[2].bn3.bias, self.layer1[1].bn3.bias), 
             torch.sqrt(torch.add(torch.pow(self.layer1[2].bn3.weight, 2), torch.pow(self.layer1[1].bn3.weight, 2))),
-            (8, 15))
-
+            (5, 12))
+        if self.ret_mask_activations: 
+            activation_list.append(masked_act * 4) # make each layer equal besides downsampling
         self._get_histo(x, 1)
+
+
         x = self.layer2(x)
-        # zero = torch.zeros(x.size()).to('cuda')
-        # x = torch.where(x < 1, x, zero)
-        # x = torch.clamp(x, 0, 1.5)
-        # print(x.shape)
-        x = self._mask(x, torch.add(self.layer2[3].bn3.bias, self.layer2[2].bn3.bias), 
+        x, masked_act = self._mask(x, torch.add(self.layer2[3].bn3.bias, self.layer2[2].bn3.bias), 
             torch.sqrt(torch.add(torch.pow(self.layer2[3].bn3.weight, 2), torch.pow(self.layer2[2].bn3.weight, 2))),
             (3,10))
-
+        if self.ret_mask_activations: 
+            activation_list.append(masked_act * 16)
         self._get_histo(x, 2)
+
         x = self.layer3(x)
-        # zero = torch.zeros(x.size()).to('cuda')
-        # x = torch.where(x < 1, x, zero)
-        # x = torch.clamp(x, 0, 2)
-        # print(x.shape)
-        x = self._mask(x, torch.add(self.layer3[5].bn3.bias, self.layer3[4].bn3.bias), 
-            torch.sqrt(torch.add(torch.pow(self.layer3[5].bn3.weight, 2), torch.pow(self.layer3[4].bn3.weight, 2))),
-            (1, 5))
         self._get_histo(x, 3)
+
         x = self.layer4(x)
-        # print(x.shape)
-        # zero = torch.zeros(x.size()).to('cuda')
-        # x = torch.where(x < 1, x, zero)
-        # x = torch.clamp(x, 0, 1)
-        # print(x.shape)
-        x = self._mask(x, torch.add(self.layer4[2].bn3.bias, self.layer4[1].bn3.bias), 
-            torch.sqrt(torch.add(torch.pow(self.layer4[2].bn3.weight, 2), torch.pow(self.layer4[1].bn3.weight, 2))), 
-            (1,3))
         self._get_histo(x, 4)
 
-        # if self.dohisto:
-        #     s = 'b_zeros' + str(self.i)
-        #     # self.i+=1
-        #     plt.title(s)
-        #     plt.legend()
-        #     plt.savefig(s)
 
         x = x.permute(0,2,3,1)
         x = self.fc(x)
@@ -406,6 +394,8 @@ class ResNet(nn.Module):
         elif self.aggregation == 'none':
             pass
         # print(x.shape)
+        if self.ret_mask_activations: 
+            return x, activation_list
         return x
 
     def forward(self, x):
