@@ -7,10 +7,9 @@ with [Chong Xiang](http://xiangchong.xyz/), [Saeed Mahloujifar](https://smahlouj
 Code for Princeton Senior Thesis: "A Defense against Adversarial Patch Attacks on Neural Network Classifiers" [link]
 
 - For fall work, majority of work can be found in eval_defense_cifar.py, patch_attack_cifar_dual.py, patch_attack_cifar.py, and PatchAttacker.py. 
-- [fall report]
+- [fall report](https://drive.google.com/file/d/1CBtAL66XA5iAz675Yo4KpCaNsUGipjgn/view?usp=sharing)
 - For spring work, and final thesis work, code can be found in nets/resnet.py, test_mod_resnet.py, test_mod_resnet_eval.py, and PatchAttacker.py. 
-- [thesis]
-- link to google drive and/or the library page
+- [thesis](https://drive.google.com/file/d/1b29nv4iDBrWOw2kpout5yZaSd5lWK5o3/view?usp=sharing)
 
 ## Requirements
 The code is tested with Python 3.6 and PyTorch 1.3.0. The complete list of required packages are available in `requirement.txt`, and can be installed with `pip install -r requirement.txt`. The code should be compatible with other versions of packages.
@@ -66,7 +65,7 @@ NOTE: except for `test_mod_resnet.py` and `test_mod_resnet_eval.py`, do not use 
 
 - See `example_cmd.sh` for example commands for running the code.
 
-If anything is unclear, please open an issue or contact Nicholas Sum (nsum@princeton.edu / nicksum107@gmail.com) or Chong Xiang (cxiang@princeton.edu).
+If anything is unclear, please open an issue or contact Nicholas Sum (nsum at princeton dot edu / nicksum107 at gmail dot com) or Chong Xiang (cxiang at princeton dot edu).
 
 ## Related Repositories
 - [certifiedpatchdefense](https://github.com/Ping-C/certifiedpatchdefense)
