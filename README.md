@@ -1,4 +1,4 @@
-# Senior Thesis: "A Defense against Adversarial Patch Attacks on Neural Network Classifiers"
+# Senior Thesis: "A Defense against Adversarial Patch Attacks via Masking on CNN Activation Maps"
 By Nicholas Sum
 
 with [Chong Xiang](http://xiangchong.xyz/), [Saeed Mahloujifar](https://smahloujifar.github.io/), [Prattek Mittal](https://www.princeton.edu/~pmittal/)
